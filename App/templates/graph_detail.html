@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Detail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-300 flex flex-col min-h-screen">
+    
+    <header class="text-center py-4 text-3xl font-bold bg-gray-800 shadow-lg">
+        📈 Deep Learning for Stock Trading: Reinforcement Learning in Action
+    </header>
+
+    <div class="text-center py-2 text-xl font-semibold bg-gray-700 text-gray-300 shadow-md">
+        📊 Stock Analysis Report {% if selected_stock %} for {{ selected_stock }} {% endif %}
+    </div>
+
+    <div class="container mx-auto p-6">
+        <form method="POST" class="flex flex-col md:flex-row items-center justify-center gap-4">
+            <select name="stock" class="p-2 rounded bg-gray-700 text-gray-300 border-none outline-none">
+                {% for stock in stocks %}
+                    <option value="{{ stock }}" {% if stock == selected_stock %}selected{% endif %}>{{ stock }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="px-4 py-2 bg-gray-600 text-gray-300 rounded shadow-md hover:bg-gray-500 hover:text-white transition">
+                Generate Report
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-lg shadow-lg text-center w-full max-w-5xl mx-auto mt-4">
+        <!-- <h2 class="text-2xl font-semibold text-gray-300">{{ tittle }}</h2> -->
+        
+        {% if chart_html %}
+        <div class="mt-4">{{ chart_html|safe }}</div>
+    {% else %}
+        <p class="text-red-400">No graph available. Select a stock and generate a graph.</p>
+    {% endif %}
+    
+    </div>
+
+    <footer class="text-center py-4 text-sm bg-gray-800 mt-auto text-gray-400">
+        404 Brain Not Found
+    </footer>
+
+</body>
+</html>
