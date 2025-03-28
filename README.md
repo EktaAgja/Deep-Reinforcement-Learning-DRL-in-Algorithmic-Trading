@@ -147,12 +147,3 @@ The model was evaluated using **multiple trading strategies**:
 - **Real-Time Dashboards** – Live monitoring of stock performance.  
 
 ---
-
-## 🛠 Setup & Installation
-Clone the repository and install dependencies:
-
-```bash
-git clone https://github.com/username/repository.git
-cd repository
-pip install -r requirements.txt
-python app.py
