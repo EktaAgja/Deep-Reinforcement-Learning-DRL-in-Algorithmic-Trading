@@ -147,3 +147,61 @@ The model was evaluated using **multiple trading strategies**:
 - **Real-Time Dashboards** – Live monitoring of stock performance.  
 
 ---
+
+## 🚀 Quick Start & Setup
+
+### Prerequisites
+- Python 3.8 or higher
+- pip package manager
+
+### Installation & Setup
+1. **Clone the repository**
+```bash
+git clone https://github.com/EktaAgja/Deep-Reinforcement-Learning-DRL-in-Algorithmic-Trading.git
+cd Deep-Reinforcement-Learning-DRL-in-Algorithmic-Trading
+```
+
+2. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+3. **Run the applications**
+```bash
+# Run both API and dashboard
+./run.sh both
+
+# Or run individually
+./run.sh api        # Trading API only
+./run.sh dashboard  # Dashboard only
+```
+
+### Access Points
+- **Dashboard**: http://localhost:5000 - Data visualization and analysis
+- **API**: http://localhost:5001 - Trading predictions API
+- **Health Check**: http://localhost:5001/health
+
+📖 **For detailed setup instructions, see [SETUP.md](SETUP.md)**
+
+## 📊 Recent Improvements
+
+✅ **Enhanced Security & Configuration**
+- Environment-based configuration system
+- Improved error handling and logging
+- Dynamic path resolution
+
+✅ **Better Development Experience**
+- Comprehensive requirements.txt
+- Easy launcher script (run.sh)
+- Basic testing framework
+- Detailed documentation
+
+✅ **Production Ready Features**
+- Health check endpoints
+- Input validation
+- Proper error responses
+- Security configurations
+
+📋 **For complete analysis and suggestions, see [SUGGESTIONS.md](SUGGESTIONS.md)**
+
+---
