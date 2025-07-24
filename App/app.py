@@ -7,21 +7,57 @@ import matplotlib.pyplot as plt
 import os
 import io
 import base64
+import logging
+from pathlib import Path
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Configuration
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
+app.config['DEBUG'] = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+
+# Data loading with error handling
+BASE_DIR = Path(__file__).parent
+DATA_FILE = BASE_DIR / "final_stock_data.csv"
+
+def load_data():
+    """Load stock data with proper error handling"""
+    try:
+        if not DATA_FILE.exists():
+            logger.error(f"Data file not found: {DATA_FILE}")
+            return None
+        
+        data = pd.read_csv(DATA_FILE)
+        
+        # Convert 'Date' column to datetime format with error handling
+        data['Date'] = pd.to_datetime(data['Date'], format='%Y-%m-%d', errors='coerce')
+        data = data.dropna(subset=['Date'])
+        
+        if data.empty:
+            logger.error("No valid data after date parsing")
+            return None
+        
+        data['Year'] = data['Date'].dt.year  # Extract Year for grouping
+        logger.info(f"Data loaded successfully: {len(data)} records")
+        return data
+        
+    except Exception as e:
+        logger.error(f"Error loading data: {e}")
+        return None
+
 # Load the CSV data
-file_path = "final_stock_data.csv"  # Update with your actual file path
-data = pd.read_csv(file_path)
+data = load_data()
+unique_stocks = []
 
-# Convert 'Date' column to datetime format with error handling
-data['Date'] = pd.to_datetime(data['Date'], format='%Y-%m-%d', errors='coerce')
-data = data.dropna(subset=['Date'])
-
-data['Year'] = data['Date'].dt.year  # Extract Year for grouping
-
-# Get unique stocks
-unique_stocks = sorted(data['Stock'].dropna().unique())
+if data is not None:
+    unique_stocks = sorted(data['Stock'].dropna().unique())
+    logger.info(f"Unique stocks found: {len(unique_stocks)}")
+else:
+    logger.warning("No data available - app will run with limited functionality")
 
 @app.route('/')
 def dashboard():
@@ -37,64 +73,108 @@ def training_graphs():
 
 # Function to generate stock graph
 def generate_stock_graph(stock):
-    filtered_data = data[data['Stock'] == stock]
+    """Generate stock volume graph with error handling"""
+    try:
+        if data is None:
+            return "<h3 style='color:red; text-align:center;'>Data not available.</h3>"
+        
+        filtered_data = data[data['Stock'] == stock]
 
-    if filtered_data.empty:
-        return "<h3 style='color:red; text-align:center;'>No data found for selected stock.</h3>"
+        if filtered_data.empty:
+            return "<h3 style='color:red; text-align:center;'>No data found for selected stock.</h3>"
 
-    # Group by year and sum the volume
-    volume_data = filtered_data.groupby('Year')['Volume'].sum().reset_index()
+        # Group by year and sum the volume
+        volume_data = filtered_data.groupby('Year')['Volume'].sum().reset_index()
 
-    # Create Plotly line chart
-    fig = px.line(volume_data, x='Year', y='Volume', 
-                  title=f"Yearly Trading Volume for {stock}",
-                  labels={'Volume': 'Total Volume', 'Year': 'Year'},
-                  markers=True)
+        # Create Plotly line chart
+        fig = px.line(volume_data, x='Year', y='Volume', 
+                      title=f"Yearly Trading Volume for {stock}",
+                      labels={'Volume': 'Total Volume', 'Year': 'Year'},
+                      markers=True)
 
-    fig.update_traces(line=dict(color='blue'))  # Set line color
-    fig.update_layout(template='plotly_white', hovermode='x')
+        fig.update_traces(line=dict(color='blue'))  # Set line color
+        fig.update_layout(template='plotly_white', hovermode='x')
 
-    return pio.to_html(fig, full_html=False)
+        return pio.to_html(fig, full_html=False)
+    
+    except Exception as e:
+        logger.error(f"Error generating stock graph: {e}")
+        return f"<h3 style='color:red; text-align:center;'>Error generating graph: {e}</h3>"
 
 def generate_stock_closing_graph(stock):
-    filtered_data = data[data['Stock'] == stock]
+    """Generate stock closing price graph with error handling"""
+    try:
+        if data is None:
+            return "<h3 style='color:red; text-align:center;'>Data not available.</h3>"
+        
+        filtered_data = data[data['Stock'] == stock]
 
-    if filtered_data.empty:
-        return "<h3 style='color:red; text-align:center;'>No data found for selected stock.</h3>"
+        if filtered_data.empty:
+            return "<h3 style='color:red; text-align:center;'>No data found for selected stock.</h3>"
 
-    # Group by year and sum the volume
-    volume_data = filtered_data.groupby('Year')['Final_Close'].sum().reset_index()
+        # Group by year and average the closing price (not sum)
+        closing_data = filtered_data.groupby('Year')['Final_Close'].mean().reset_index()
+        
+        # Create Plotly line chart
+        fig = px.line(closing_data, x='Year', y='Final_Close', 
+                      title=f"Yearly Average Closing Price for {stock}",
+                      labels={'Final_Close': 'Average Closing Price', 'Year': 'Year'},
+                      markers=True)
+
+        fig.update_traces(line=dict(color='green'))  # Set line color
+        fig.update_layout(template='plotly_white', hovermode='x')
+
+        return pio.to_html(fig, full_html=False)
     
-    # Create Plotly line chart
-    fig = px.line(volume_data, x='Year', y='Final_Close', 
-                  title=f"Yearly Trading Closing Price for {stock}",
-                  labels={'Final_Close': 'Average Closing Price', 'Year': 'Year'},
-                  markers=True)
-
-    fig.update_traces(line=dict(color='blue'))  # Set line color
-    fig.update_layout(template='plotly_white', hovermode='x')
-
-    return pio.to_html(fig, full_html=False)
+    except Exception as e:
+        logger.error(f"Error generating closing price graph: {e}")
+        return f"<h3 style='color:red; text-align:center;'>Error generating graph: {e}</h3>"
 
 @app.route('/graph_detail2', methods=['GET', 'POST'])
 def graph_detail2():
-    selected_stock = request.form.get("stock", unique_stocks[0])  # Default to first stock
-    chart_html = generate_stock_graph(selected_stock)  # Generate graph
+    """Generate volume graph for selected stock"""
+    try:
+        if not unique_stocks:
+            return render_template('error.html', 
+                                 error="No stock data available")
+        
+        selected_stock = request.form.get("stock", unique_stocks[0])
+        
+        if selected_stock not in unique_stocks:
+            selected_stock = unique_stocks[0]
+            
+        chart_html = generate_stock_graph(selected_stock)
 
-    return render_template('graph_detail.html', 
-                           stocks=unique_stocks, 
-                           selected_stock=selected_stock, 
-                           chart_html=chart_html)
+        return render_template('graph_detail.html', 
+                               stocks=unique_stocks, 
+                               selected_stock=selected_stock, 
+                               chart_html=chart_html)
+    except Exception as e:
+        logger.error(f"Error in graph_detail2: {e}")
+        return render_template('error.html', error=str(e))
 
 @app.route('/graph_detail1', methods=['GET', 'POST'])
 def graph_detail1():
-    selected_stock = request.form.get("stock", unique_stocks[0])  # Default to first stock
-    chart_html = generate_stock_closing_graph(selected_stock)  # Generate graph
+    """Generate closing price graph for selected stock"""
+    try:
+        if not unique_stocks:
+            return render_template('error.html', 
+                                 error="No stock data available")
+        
+        selected_stock = request.form.get("stock", unique_stocks[0])
+        
+        if selected_stock not in unique_stocks:
+            selected_stock = unique_stocks[0]
+            
+        chart_html = generate_stock_closing_graph(selected_stock)
 
-    return render_template('graph_detail.html', 
-                           stocks=unique_stocks, 
-                           selected_stock=selected_stock, 
-                           chart_html=chart_html)
+        return render_template('graph_detail.html', 
+                               stocks=unique_stocks, 
+                               selected_stock=selected_stock, 
+                               chart_html=chart_html)
+    except Exception as e:
+        logger.error(f"Error in graph_detail1: {e}")
+        return render_template('error.html', error=str(e))
 
 def generate_roi_plot(stock_data):
     yearly_metrics = stock_data.groupby(["Stock", "Year"]).agg(
@@ -166,4 +246,8 @@ def graph_detail4():
                            chart_html=chart_html)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    
+    logger.info(f"Starting visualization server on port {port}, debug={debug}")
+    app.run(host='0.0.0.0', port=port, debug=debug)
